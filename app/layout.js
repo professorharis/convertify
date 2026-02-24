@@ -11,11 +11,11 @@ export const metadata = {
   openGraph: {
     title: 'Convertify - Free Online File Converter',
     description: 'Convert images and documents between 19+ formats instantly. No uploads, 100% secure, free forever.',
-    url: 'https://convertify-pro.vercel.app', // Replace with your actual domain
+    url: 'https://convertify-pro.vercel.app', 
     siteName: 'Convertify',
     images: [
       {
-        url: 'https://convertify.app/og-image.png', // Replace with your actual OG image URL
+        url: 'https://convertify.app/og-image.png',
         width: 1200,
         height: 630,
         alt: 'Convertify - File Converter',
@@ -28,7 +28,7 @@ export const metadata = {
     card: 'summary_large_image',
     title: 'Convertify - Free Online File Converter',
     description: 'Convert images and documents between 19+ formats instantly. No uploads, 100% secure, free forever.',
-    images: ['https://convertify.app/og-image.png'], // Replace with your actual image URL
+    images: ['https://convertify.app/og-image.png'], // 
   },
   robots: {
     index: true,
@@ -48,7 +48,7 @@ export const metadata = {
   },
   manifest: '/site.webmanifest',
   alternates: {
-    canonical: 'https://convertify-pro.vercel.app', // Replace with your actual domain
+    canonical: 'https://convertify-pro.vercel.app', 
   },
 };
 

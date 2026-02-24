@@ -1,17 +1,5 @@
 "use client";
 
-// ============================================================================
-// FORMAT CONVERTER LANDING PAGE
-// ============================================================================
-// This component provides a complete file conversion UI with support for
-// images (PNG, JPG, WebP, GIF, SVG, BMP, ICO, TIFF) and documents
-// (PDF, DOCX, TXT, RTF, HTML, XML, CSV, JSON, Markdown, PPTX).
-//
-// All conversions happen 100% in the browser – no server uploads.
-// Libraries are loaded dynamically only when needed, keeping the initial
-// bundle small and improving performance.
-// ============================================================================
-
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Sparkles, FileImage, FileText, Zap, CheckCircle2, ArrowRight,
@@ -23,25 +11,18 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import Image from 'next/image'; // Using Next.js optimized Image component for better performance
+import NextImage from 'next/image'; // renamed to avoid conflict
 
 // ----------------------------------------------------------------------------
-// DYNAMIC LIBRARY LOADING
+// DYNAMIC LIBRARY LOADING – loaded only when needed
 // ----------------------------------------------------------------------------
-// Libraries are stored as variables and loaded on demand. This prevents
-// unnecessary JavaScript from being downloaded upfront.
 let jsPDF;
 let mammoth;
 let html2canvas;
 let pdfjsLib;
 let docx;
+let JSZip;
 
-/**
- * Loads a required library dynamically and caches it.
- * Falls back to CDN for pdf.js worker if module import fails.
- * @param {string} libraryName - Name of the library to load ('jspdf', 'mammoth', etc.)
- * @returns {Promise<object|null>} - The loaded library module or null on failure.
- */
 const loadLibrary = async (libraryName) => {
   try {
     switch (libraryName) {
@@ -49,21 +30,17 @@ const loadLibrary = async (libraryName) => {
         const jspdfModule = await import('jspdf');
         jsPDF = jspdfModule.default;
         return jsPDF;
-
       case 'mammoth':
         const mammothModule = await import('mammoth');
         mammoth = mammothModule.default || mammothModule;
         return mammoth;
-
       case 'html2canvas':
         const html2canvasModule = await import('html2canvas');
         html2canvas = html2canvasModule.default || html2canvasModule;
         return html2canvas;
-
       case 'pdfjs':
         const pdfjsModule = await import('pdfjs-dist/build/pdf.min.mjs');
         pdfjsLib = pdfjsModule;
-        // Set the worker source – try module first, then fallback to CDN
         if (typeof window !== 'undefined') {
           try {
             const workerModule = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
@@ -73,12 +50,14 @@ const loadLibrary = async (libraryName) => {
           }
         }
         return pdfjsLib;
-
       case 'docx':
         const docxModule = await import('docx');
         docx = docxModule;
         return docx;
-
+      case 'jszip':
+        const jszipModule = await import('jszip');
+        JSZip = jszipModule.default;
+        return JSZip;
       default:
         return null;
     }
@@ -92,23 +71,20 @@ const loadLibrary = async (libraryName) => {
 // MAIN COMPONENT
 // ----------------------------------------------------------------------------
 export default function FormatConverterLandingPage() {
-  // State management for the converter UI
-  const [uploadedFile, setUploadedFile] = useState(null);        // The raw File object
-  const [fileName, setFileName] = useState('');                  // Name of the uploaded file
-  const [fileType, setFileType] = useState('');                  // 'image', 'document', or 'other'
-  const [processing, setProcessing] = useState(false);           // Conversion in progress
-  const [processedFile, setProcessedFile] = useState(null);      // Resulting blob URL or dataURL
-  const [selectedFormat, setSelectedFormat] = useState('png');   // Target format id
-  const [outputFileName, setOutputFileName] = useState('');      // Suggested download name
-  const [conversionError, setConversionError] = useState('');    // Error message
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);   // Mobile navigation toggle
-  const [librariesLoading, setLibrariesLoading] = useState(true); // Initial library load
-  const [libraryErrors, setLibraryErrors] = useState([]);        // Any library loading errors
-  const fileInputRef = useRef(null);                              // Reference to hidden file input
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [fileName, setFileName] = useState('');
+  const [fileType, setFileType] = useState('');
+  const [processing, setProcessing] = useState(false);
+  const [processedFile, setProcessedFile] = useState(null);
+  const [selectedFormat, setSelectedFormat] = useState('png');
+  const [outputFileName, setOutputFileName] = useState('');
+  const [conversionError, setConversionError] = useState('');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [libraryLoading, setLibraryLoading] = useState(false);
+  const [libraryErrors, setLibraryErrors] = useState([]);
+  const fileInputRef = useRef(null);
 
-  // --------------------------------------------------------------------------
-  // FORMAT LISTS (used for UI and validation)
-  // --------------------------------------------------------------------------
+  // Format lists 
   const documentFormats = useMemo(() => [
     { id: 'pdf', name: 'PDF', description: 'Document format', icon: FileText, category: 'document' },
     { id: 'docx', name: 'DOCX', description: 'Microsoft Word', icon: File, category: 'document' },
@@ -134,41 +110,16 @@ export default function FormatConverterLandingPage() {
     { id: 'tiff', name: 'TIFF', description: 'High quality', icon: FileImage, category: 'image' },
   ], []);
 
-  // Helper arrays for quick format checks
   const imageFormats = useMemo(() => ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'svg', 'ico', 'tiff'], []);
   const documentFormatsArray = useMemo(() => ['pdf', 'docx', 'txt', 'rtf', 'html', 'xml', 'csv', 'json', 'md', 'pptx'], []);
 
-  // --------------------------------------------------------------------------
-  // LIFECYCLE: LOAD LIBRARIES ON MOUNT
-  // --------------------------------------------------------------------------
-  useEffect(() => {
-    const initializeLibraries = async () => {
-      const errors = [];
-      // Load only the most critical libraries upfront (pdf generation and parsing)
-      // Others (mammoth, docx, etc.) are loaded inside conversion functions.
-      await loadLibrary('jspdf').catch(e => {
-        errors.push('PDF generation library failed to load');
-        console.error('jsPDF error:', e);
-      });
-      await loadLibrary('pdfjs').catch(e => {
-        errors.push('PDF processing library failed to load');
-        console.error('PDF.js error:', e);
-      });
-      setLibraryErrors(errors);
-      setLibrariesLoading(false);
-    };
+  // No upfront library loading – removed useEffect
 
-    initializeLibraries();
-  }, []);
-
-  // --------------------------------------------------------------------------
-  // FILE UPLOAD HANDLER
-  // --------------------------------------------------------------------------
+  // File upload handler 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
-    // 50MB size limit to prevent memory issues
     if (file.size > 50 * 1024 * 1024) {
       setConversionError('File size too large. Maximum size is 50MB.');
       return;
@@ -182,48 +133,35 @@ export default function FormatConverterLandingPage() {
     const fileExtension = file.name.split('.').pop().toLowerCase();
     if (imageFormats.includes(fileExtension)) {
       setFileType('image');
-      setSelectedFormat('jpg'); // sensible default
+      setSelectedFormat('jpg');
     } else if (documentFormatsArray.includes(fileExtension)) {
       setFileType('document');
-      setSelectedFormat('pdf'); // sensible default
+      setSelectedFormat('pdf');
     } else {
       setFileType('other');
       setConversionError('Unsupported file format. Please upload an image or document.');
     }
   };
 
-  // --------------------------------------------------------------------------
-  // FORMAT FILTERING: show only relevant formats based on input file
-  // --------------------------------------------------------------------------
+  // Format filtering
   const getSupportedFormats = useCallback(() => {
     if (!uploadedFile) return [...imageFormatsList, ...documentFormats];
 
     const inputExtension = fileName.split('.').pop().toLowerCase();
 
     if (imageFormats.includes(inputExtension)) {
-      // Images can convert to any image format + PDF
       return [...imageFormatsList, documentFormats.find(f => f.id === 'pdf')].filter(Boolean);
     } else if (documentFormatsArray.includes(inputExtension)) {
-      // Documents can convert to any document format
       return documentFormats;
     }
-    // Fallback: show all
     return [...imageFormatsList, ...documentFormats];
   }, [uploadedFile, fileName, imageFormatsList, documentFormats, imageFormats, documentFormatsArray]);
 
-  // Memoized list to avoid recalculating on every render
   const supportedFormats = useMemo(() => getSupportedFormats(), [getSupportedFormats]);
 
   // --------------------------------------------------------------------------
-  // CORE CONVERSION FUNCTIONS (unchanged logic, only comments added)
+  // CONVERSION FUNCTIONS (same logic, but libraries load on demand)
   // --------------------------------------------------------------------------
-
-  /**
-   * Converts an image element to another image format.
-   * @param {HTMLImageElement} img - Loaded image element.
-   * @param {string} targetFormat - Desired output format id (png, jpg, etc.).
-   * @returns {Promise<string>} - Data URL of the converted image.
-   */
   const convertImageToImage = async (img, targetFormat) => {
     return new Promise((resolve) => {
       const canvas = document.createElement('canvas');
@@ -231,7 +169,6 @@ export default function FormatConverterLandingPage() {
       canvas.height = img.height;
       const ctx = canvas.getContext('2d');
 
-      // For JPEG, fill white background to avoid transparency issues
       if (targetFormat === 'jpg' || targetFormat === 'jpeg') {
         ctx.fillStyle = 'white';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -262,7 +199,6 @@ export default function FormatConverterLandingPage() {
           mimeType = 'image/bmp';
           break;
         case 'ico':
-          // ICO is special – we create a 32x32 canvas and return as ICO data URL
           const icoCanvas = document.createElement('canvas');
           icoCanvas.width = 32;
           icoCanvas.height = 32;
@@ -271,7 +207,6 @@ export default function FormatConverterLandingPage() {
           resolve(icoCanvas.toDataURL('image/x-icon'));
           return;
         case 'svg':
-          // SVG: embed the PNG image inside an SVG wrapper
           const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="${img.width}" height="${img.height}">
             <image href="${canvas.toDataURL('image/png')}" width="${img.width}" height="${img.height}"/>
           </svg>`;
@@ -284,85 +219,6 @@ export default function FormatConverterLandingPage() {
     });
   };
 
-  /**
-   * Main conversion dispatcher. Calls the appropriate converter based on target format.
-   */
-  const convertFile = async () => {
-    if (!uploadedFile) return;
-
-    if (librariesLoading) {
-      setConversionError('Libraries are still loading. Please wait a moment.');
-      return;
-    }
-
-    setProcessing(true);
-    setConversionError('');
-
-    try {
-      let result;
-      const inputExtension = fileName.split('.').pop().toLowerCase();
-
-      if (selectedFormat === 'pdf') {
-        result = await convertToPDF(uploadedFile);
-        setOutputFileName(`${fileName.split('.')[0]}.pdf`);
-      } else if (imageFormats.includes(selectedFormat)) {
-        if (imageFormats.includes(inputExtension)) {
-          const img = new window.Image();
-          const reader = new FileReader();
-
-          result = await new Promise((resolve, reject) => {
-            reader.onload = (e) => {
-              img.onload = async () => {
-                try {
-                  const converted = await convertImageToImage(img, selectedFormat);
-                  resolve(converted);
-                } catch (error) {
-                  reject(error);
-                }
-              };
-              img.onerror = () => reject(new Error('Failed to load image'));
-              img.src = e.target.result;
-            };
-            reader.onerror = () => reject(new Error('Failed to read file'));
-            reader.readAsDataURL(uploadedFile);
-          });
-        } else {
-          throw new Error(`Cannot convert ${inputExtension} to image format. Please upload an image file.`);
-        }
-        setOutputFileName(`${fileName.split('.')[0]}.${selectedFormat}`);
-      } else if (selectedFormat === 'txt') {
-        result = await convertToTXT(uploadedFile);
-        setOutputFileName(`${fileName.split('.')[0]}.txt`);
-      } else if (selectedFormat === 'docx') {
-        result = await convertToDOCX(uploadedFile);
-        setOutputFileName(`${fileName.split('.')[0]}.docx`);
-      } else if (selectedFormat === 'rtf') {
-        result = await convertToRTF(uploadedFile);
-        setOutputFileName(`${fileName.split('.')[0]}.rtf`);
-      } else if (selectedFormat === 'html') {
-        result = await convertToHTML(uploadedFile);
-        setOutputFileName(`${fileName.split('.')[0]}.html`);
-      } else if (['xml', 'csv', 'json', 'md'].includes(selectedFormat)) {
-        result = await convertToOtherFormat(uploadedFile, selectedFormat);
-        setOutputFileName(`${fileName.split('.')[0]}.${selectedFormat}`);
-      } else {
-        throw new Error(`Conversion to ${selectedFormat} is not supported`);
-      }
-
-      setProcessedFile(result);
-    } catch (error) {
-      console.error('Conversion error:', error);
-      setConversionError(error.message || 'Conversion failed. Please try another format.');
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  /**
-   * Converts any supported file to PDF.
-   * @param {File} file - Input file.
-   * @returns {Promise<string>} - Blob URL of the generated PDF.
-   */
   const convertToPDF = async (file) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -376,15 +232,15 @@ export default function FormatConverterLandingPage() {
         }
 
         if (imageFormats.includes(fileExtension)) {
-          const img = new Image();
+          if (!jsPDF) await loadLibrary('jspdf');
+          if (!jsPDF) throw new Error('PDF library not available');
+
+          const img = new window.Image(); // fixed conflict
           const reader = new FileReader();
 
           reader.onload = (e) => {
             img.onload = async () => {
               try {
-                if (!jsPDF) await loadLibrary('jspdf');
-                if (!jsPDF) throw new Error('PDF library not available');
-
                 const pdf = new jsPDF({
                   orientation: img.width > img.height ? 'landscape' : 'portrait',
                   unit: 'px',
@@ -421,7 +277,6 @@ export default function FormatConverterLandingPage() {
             const result = await mammoth.convertToHtml({ arrayBuffer });
             const html = result.value;
 
-            // Create a temporary div to render HTML for screenshot
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = html;
             tempDiv.style.padding = '20px';
@@ -486,7 +341,7 @@ export default function FormatConverterLandingPage() {
             reject(error);
           }
         } else {
-          // Fallback: try to read as text and create PDF
+          // Fallback
           try {
             const text = await file.text();
             if (!jsPDF) await loadLibrary('jspdf');
@@ -520,9 +375,6 @@ export default function FormatConverterLandingPage() {
     });
   };
 
-  /**
-   * Converts file to plain text (TXT).
-   */
   const convertToTXT = async (file) => {
     try {
       const fileExtension = file.name.split('.').pop().toLowerCase();
@@ -560,7 +412,6 @@ export default function FormatConverterLandingPage() {
         return URL.createObjectURL(file);
       } else if (fileExtension === 'rtf') {
         const text = await file.text();
-        // Very simple RTF stripping (not perfect but works for basic text)
         const plainText = text
           .replace(/\\[^\\]*(\\|$)/g, ' ')
           .replace(/\{[^}]*\}/g, '')
@@ -574,7 +425,7 @@ export default function FormatConverterLandingPage() {
         throw new Error('Image to text conversion requires OCR. Please convert to PDF first.');
       }
 
-      // Fallback: try to read as text
+      // Fallback
       try {
         const text = await file.text();
         const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
@@ -587,9 +438,6 @@ export default function FormatConverterLandingPage() {
     }
   };
 
-  /**
-   * Converts file to DOCX. Uses docx library if available, otherwise falls back to a simple JSZip-based DOCX creation.
-   */
   const convertToDOCX = async (file) => {
     try {
       const fileExtension = file.name.split('.').pop().toLowerCase();
@@ -615,9 +463,7 @@ export default function FormatConverterLandingPage() {
           const pageText = textContent.items.map(item => item.str).join(' ');
           text += pageText + '\n\n';
         }
-      } else if (fileExtension === 'txt' || fileExtension === 'rtf' || fileExtension === 'html' ||
-        fileExtension === 'xml' || fileExtension === 'csv' || fileExtension === 'json' ||
-        fileExtension === 'md') {
+      } else if (['txt', 'rtf', 'html', 'xml', 'csv', 'json', 'md'].includes(fileExtension)) {
         text = await file.text();
 
         if (fileExtension === 'rtf') {
@@ -632,7 +478,7 @@ export default function FormatConverterLandingPage() {
         throw new Error(`Cannot convert ${fileExtension} to DOCX`);
       }
 
-      // Try using the docx library
+      // Try docx library
       try {
         if (!docx) await loadLibrary('docx');
         if (docx && docx.Document && docx.Packer) {
@@ -661,9 +507,9 @@ export default function FormatConverterLandingPage() {
         console.log('Using fallback DOCX conversion:', docxError);
       }
 
-      // Fallback: create a minimal DOCX using JSZip
+      // Fallback with JSZip
       try {
-        const JSZip = await import('jszip').then(m => m.default);
+        if (!JSZip) await loadLibrary('jszip');
         const zip = new JSZip();
 
         const docXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -708,17 +554,13 @@ export default function FormatConverterLandingPage() {
 
         const blob = await zip.generateAsync({ type: "blob" });
         return URL.createObjectURL(blob);
-
       } catch (zipError) {
         console.log('JSZip fallback failed, using simple text:', zipError);
-
-        // Last resort: return a blob with .docx extension but containing plain text (invalid but better than nothing)
         const blob = new Blob([text], {
           type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         });
         return URL.createObjectURL(blob);
       }
-
     } catch (error) {
       console.error('DOCX conversion error:', error);
       if (error.message.includes('Cannot convert')) {
@@ -728,9 +570,6 @@ export default function FormatConverterLandingPage() {
     }
   };
 
-  /**
-   * Converts file to RTF (Rich Text Format).
-   */
   const convertToRTF = async (file) => {
     try {
       const fileExtension = file.name.split('.').pop().toLowerCase();
@@ -765,7 +604,6 @@ export default function FormatConverterLandingPage() {
         throw new Error(`Cannot convert ${fileExtension} to RTF`);
       }
 
-      // Build a minimal RTF document
       const rtfContent = `{\\rtf1\\ansi\\ansicpg1252\\deff0\\nouicompat\\deflang1033{\\fonttbl{\\f0\\fnil\\fcharset0 Calibri;}}
 {\\*\\generator FormatConverter}\\viewkind4\\uc1 
 \\pard\\sa200\\sl276\\slmult1\\f0\\fs22\\lang9 ${text.replace(/\n/g, '\\\\par ').substring(0, 5000)}
@@ -778,9 +616,6 @@ export default function FormatConverterLandingPage() {
     }
   };
 
-  /**
-   * Converts file to HTML.
-   */
   const convertToHTML = async (file) => {
     try {
       const fileExtension = file.name.split('.').pop().toLowerCase();
@@ -839,9 +674,6 @@ export default function FormatConverterLandingPage() {
     }
   };
 
-  /**
-   * Converts file to XML, CSV, JSON, or Markdown.
-   */
   const convertToOtherFormat = async (file, targetFormat) => {
     try {
       const fileExtension = file.name.split('.').pop().toLowerCase();
@@ -911,10 +743,75 @@ export default function FormatConverterLandingPage() {
     }
   };
 
-  // --------------------------------------------------------------------------
-  // UI HELPER FUNCTIONS
-  // --------------------------------------------------------------------------
+  const convertFile = async () => {
+    if (!uploadedFile) return;
 
+    setProcessing(true);
+    setLibraryLoading(true);
+    setConversionError('');
+
+    try {
+      let result;
+      const inputExtension = fileName.split('.').pop().toLowerCase();
+
+      if (selectedFormat === 'pdf') {
+        result = await convertToPDF(uploadedFile);
+        setOutputFileName(`${fileName.split('.')[0]}.pdf`);
+      } else if (imageFormats.includes(selectedFormat)) {
+        if (imageFormats.includes(inputExtension)) {
+          const img = new window.Image();
+          const reader = new FileReader();
+
+          result = await new Promise((resolve, reject) => {
+            reader.onload = (e) => {
+              img.onload = async () => {
+                try {
+                  const converted = await convertImageToImage(img, selectedFormat);
+                  resolve(converted);
+                } catch (error) {
+                  reject(error);
+                }
+              };
+              img.onerror = () => reject(new Error('Failed to load image'));
+              img.src = e.target.result;
+            };
+            reader.onerror = () => reject(new Error('Failed to read file'));
+            reader.readAsDataURL(uploadedFile);
+          });
+        } else {
+          throw new Error(`Cannot convert ${inputExtension} to image format. Please upload an image file.`);
+        }
+        setOutputFileName(`${fileName.split('.')[0]}.${selectedFormat}`);
+      } else if (selectedFormat === 'txt') {
+        result = await convertToTXT(uploadedFile);
+        setOutputFileName(`${fileName.split('.')[0]}.txt`);
+      } else if (selectedFormat === 'docx') {
+        result = await convertToDOCX(uploadedFile);
+        setOutputFileName(`${fileName.split('.')[0]}.docx`);
+      } else if (selectedFormat === 'rtf') {
+        result = await convertToRTF(uploadedFile);
+        setOutputFileName(`${fileName.split('.')[0]}.rtf`);
+      } else if (selectedFormat === 'html') {
+        result = await convertToHTML(uploadedFile);
+        setOutputFileName(`${fileName.split('.')[0]}.html`);
+      } else if (['xml', 'csv', 'json', 'md'].includes(selectedFormat)) {
+        result = await convertToOtherFormat(uploadedFile, selectedFormat);
+        setOutputFileName(`${fileName.split('.')[0]}.${selectedFormat}`);
+      } else {
+        throw new Error(`Conversion to ${selectedFormat} is not supported`);
+      }
+
+      setProcessedFile(result);
+    } catch (error) {
+      console.error('Conversion error:', error);
+      setConversionError(error.message || 'Conversion failed. Please try another format.');
+    } finally {
+      setProcessing(false);
+      setLibraryLoading(false);
+    }
+  };
+
+  // UI helpers (unchanged)
   const removeUploadedFile = () => {
     setUploadedFile(null);
     setProcessedFile(null);
@@ -943,7 +840,6 @@ export default function FormatConverterLandingPage() {
     return URL.createObjectURL(uploadedFile);
   }, [uploadedFile]);
 
-  // Revoke blob URLs when component unmounts or processedFile changes
   useEffect(() => {
     return () => {
       if (processedFile && processedFile.startsWith('blob:')) {
@@ -955,24 +851,11 @@ export default function FormatConverterLandingPage() {
   const previewURL = getPreviewURL();
 
   // --------------------------------------------------------------------------
-  // RENDERING
+  // RENDERING –  (ONLY Image → NextImage)
   // --------------------------------------------------------------------------
-  if (librariesLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex items-center justify-center">
-        <div className="text-center px-4">
-          {/* Using fixed width/height for the spinner to avoid layout shift */}
-          <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" role="status" aria-label="Loading"></div>
-          <p className="text-sm sm:text-base text-gray-600">Loading conversion libraries...</p>
-          <p className="text-xs sm:text-sm text-gray-500 mt-2">This may take a moment</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white text-gray-900">
-      {/* MOBILE HEADER */}
+      {/* Mobile Header (unchanged) */}
       <div className="md:hidden h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 sticky top-0 z-50">
         <Link href="/" className="flex items-center gap-2" aria-label="Home">
           <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg flex items-center justify-center text-white">
@@ -991,7 +874,7 @@ export default function FormatConverterLandingPage() {
         </button>
       </div>
 
-      {/* DESKTOP NAVBAR */}
+      {/* Desktop Navbar  */}
       <nav className="hidden md:flex h-20 bg-white border-b border-gray-200 px-4 sm:px-6 md:px-16 items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center text-white">
@@ -1020,7 +903,7 @@ export default function FormatConverterLandingPage() {
         </div>
       </nav>
 
-      {/* MOBILE MENU DROPDOWN */}
+      {/* Mobile Menu  */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-white border-b border-gray-200 px-4 py-4 absolute top-14 left-0 right-0 z-40 shadow-xl rounded-b-2xl">
           <div className="flex flex-col">
@@ -1082,7 +965,7 @@ export default function FormatConverterLandingPage() {
         </div>
       )}
 
-      {/* MAIN CONVERTER SECTION */}
+      {/* MAIN CONVERTER SECTION – */}
       <motion.section
         id="converter"
         initial={{ opacity: 0, y: 20 }}
@@ -1108,7 +991,7 @@ export default function FormatConverterLandingPage() {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 md:gap-12">
-          {/* LEFT SIDE - Converter */}
+          {/* LEFT SIDE - Converter  */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -1146,6 +1029,7 @@ export default function FormatConverterLandingPage() {
               </motion.p>
             </div>
 
+            {/* Converter box */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1190,9 +1074,8 @@ export default function FormatConverterLandingPage() {
                   <div className="flex items-center justify-between p-2 sm:p-3 bg-gray-50 rounded-lg sm:rounded-xl">
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                       {imageFormats.includes(fileName.split('.').pop().toLowerCase()) ? (
-                        // Use Next.js Image for optimized loading and to prevent CLS
                         <div className="relative w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
-                          <Image
+                          <NextImage
                             src={previewURL}
                             alt="Preview of uploaded file"
                             fill
@@ -1227,7 +1110,7 @@ export default function FormatConverterLandingPage() {
                       Select Output Format ({supportedFormats.length} formats available)
                     </label>
 
-                    {/* Mobile horizontal scrollable format selector */}
+                    {/* Mobile format selector */}
                     <div className="md:hidden">
                       <div className="flex overflow-x-auto pb-2 -mx-4 px-4 space-x-2 scrollbar-hide">
                         {supportedFormats.map((format, index) => {
@@ -1259,7 +1142,7 @@ export default function FormatConverterLandingPage() {
                       </div>
                     </div>
 
-                    {/* Desktop grid format selector */}
+                    {/* Desktop format selector */}
                     <div className="hidden md:grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[300px] overflow-y-auto p-2">
                       {supportedFormats.map((format, index) => {
                         const Icon = format.icon;
@@ -1307,13 +1190,13 @@ export default function FormatConverterLandingPage() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={convertFile}
-                    disabled={processing}
+                    disabled={processing || libraryLoading}
                     className="w-full bg-gradient-to-r from-orange-500 to-red-600 text-white px-5 sm:px-6 py-2.5 sm:py-3 rounded-lg sm:rounded-xl font-bold hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-sm sm:text-base"
                   >
-                    {processing ? (
+                    {processing || libraryLoading ? (
                       <>
                         <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin" aria-hidden="true"></div>
-                        Converting...
+                        {libraryLoading ? "Loading Libraries..." : "Converting..."}
                       </>
                     ) : (
                       <>
@@ -1348,9 +1231,8 @@ export default function FormatConverterLandingPage() {
                         loading="lazy"
                       />
                     ) : imageFormats.includes(selectedFormat) ? (
-                      // Use Next.js Image for preview
                       <div className="relative w-full h-full">
-                        <Image
+                        <NextImage
                           src={processedFile}
                           alt="Converted Preview"
                           fill
@@ -1397,6 +1279,7 @@ export default function FormatConverterLandingPage() {
               )}
             </motion.div>
 
+            {/* Feature cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
               {[
                 { icon: FileImage, title: "9+ Image Formats", desc: "PNG, JPG, WebP, etc." },
@@ -1421,16 +1304,14 @@ export default function FormatConverterLandingPage() {
             </div>
           </motion.div>
 
-          {/* RIGHT SIDE - Features & Info */}
+          {/* RIGHT SIDE - Features & Info  */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3, duration: 0.6 }}
             className="space-y-4 sm:space-y-6 md:space-y-8"
           >
-            <div
-              className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-gray-200 p-4 sm:p-5 md:p-6"
-            >
+            <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-gray-200 p-4 sm:p-5 md:p-6">
               <h3 className="text-base sm:text-lg font-bold mb-3 sm:mb-4">Supported Conversions</h3>
               <div className="space-y-2 sm:space-y-3">
                 {[
@@ -1455,9 +1336,7 @@ export default function FormatConverterLandingPage() {
               </div>
             </div>
 
-            <div
-              className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-gray-200 p-4 sm:p-5 md:p-6"
-            >
+            <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-gray-200 p-4 sm:p-5 md:p-6">
               <h3 className="text-base sm:text-lg font-bold mb-2 sm:mb-3">Conversion Tips</h3>
               <ul className="space-y-1 sm:space-y-2">
                 {[
@@ -1593,7 +1472,7 @@ export default function FormatConverterLandingPage() {
         </div>
       </motion.section>
 
-      {/* Features Section */}
+      {/* Features Section  */}
       <motion.section
         id="features"
         initial={{ opacity: 0 }}
@@ -1662,7 +1541,7 @@ export default function FormatConverterLandingPage() {
         </div>
       </motion.section>
 
-      {/* CTA Section */}
+      {/* CTA Section  */}
       <motion.section
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
@@ -1681,7 +1560,7 @@ export default function FormatConverterLandingPage() {
             </h2>
 
             <p className="text-sm sm:text-base md:text-xl text-gray-700 mb-6 sm:mb-8 max-w-2xl mx-auto">
-              Join thousands of professionals who trust Convertify for secure, fast file conversions
+              Convert any file instantly and securely everything stays on your device.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
@@ -1724,55 +1603,53 @@ export default function FormatConverterLandingPage() {
         </div>
       </motion.section>
 
-    {/* Footer */}
-<footer className="bg-gray-100 text-gray-800 py-8 sm:py-12 border-t border-gray-200">
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-16">
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 sm:gap-8 mb-8 sm:mb-12">
-      <div>
-        <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center text-white">
-            <Sparkles size={18} className="sm:size-6" aria-hidden="true" />
+      {/* Footer */}
+      <footer className="bg-gray-100 text-gray-800 py-8 sm:py-12 border-t border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-16">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 sm:gap-8 mb-8 sm:mb-12">
+            <div>
+              <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center text-white">
+                  <Sparkles size={18} className="sm:size-6" aria-hidden="true" />
+                </div>
+                <span className="text-lg sm:text-2xl font-bold">Convertify</span>
+              </div>
+              <p className="text-gray-600 text-xs sm:text-sm">
+                Professional file conversion tools with privacy at the core.
+              </p>
+            </div>
+
+            <div>
+              <h4 className="font-bold text-sm sm:text-lg mb-3 sm:mb-4">Product</h4>
+              <ul className="space-y-1 sm:space-y-2">
+                <li><Link href="#converter" className="text-xs sm:text-sm text-gray-600 hover:text-orange-600">Converter</Link></li>
+                <li><Link href="#features" className="text-xs sm:text-sm text-gray-600 hover:text-orange-600">Features</Link></li>
+                <li><Link href="#how-it-works" className="text-xs sm:text-sm text-gray-600 hover:text-orange-600">How It Works</Link></li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-bold text-sm sm:text-lg mb-3 sm:mb-4">Company</h4>
+              <ul className="space-y-1 sm:space-y-2">
+                <li><Link href="/about" className="text-xs sm:text-sm text-gray-600 hover:text-orange-600">About</Link></li>
+                <li><Link href="/privacy" className="text-xs sm:text-sm text-gray-600 hover:text-orange-600">Privacy</Link></li>
+                <li><Link href="/terms" className="text-xs sm:text-sm text-gray-600 hover:text-orange-600">Terms</Link></li>
+                <li><Link href="/contact" className="text-xs sm:text-sm text-gray-600 hover:text-orange-600">Contact</Link></li>
+                <li><Link href="/faq" className="text-xs sm:text-sm text-gray-600 hover:text-orange-600">FAQ</Link></li>
+              </ul>
+            </div>
           </div>
-          <span className="text-lg sm:text-2xl font-bold">Convertify</span>
+
+          <div className="border-t border-gray-300 pt-6 sm:pt-8 text-center">
+            <p className="text-gray-600 text-xs sm:text-sm">
+              &copy; {new Date().getFullYear()} Convertify. All rights reserved.
+            </p>
+            <p className="text-gray-500 text-xs mt-1">
+              All conversions are processed securely in your browser.
+            </p>
+          </div>
         </div>
-        <p className="text-gray-600 text-xs sm:text-sm">
-          Professional file conversion tools with privacy at the core.
-        </p>
-      </div>
-
-      <div>
-        <h4 className="font-bold text-sm sm:text-lg mb-3 sm:mb-4">Product</h4>
-        <ul className="space-y-1 sm:space-y-2">
-          <li><Link href="#converter" className="text-xs sm:text-sm text-gray-600 hover:text-orange-600">Converter</Link></li>
-          <li><Link href="#features" className="text-xs sm:text-sm text-gray-600 hover:text-orange-600">Features</Link></li>
-          <li><Link href="#how-it-works" className="text-xs sm:text-sm text-gray-600 hover:text-orange-600">How It Works</Link></li>
-        </ul>
-      </div>
-
-      <div>
-        <h4 className="font-bold text-sm sm:text-lg mb-3 sm:mb-4">Company</h4>
-        <ul className="space-y-1 sm:space-y-2">
-          <li><Link href="/about" className="text-xs sm:text-sm text-gray-600 hover:text-orange-600">About</Link></li>
-          <li><Link href="/privacy" className="text-xs sm:text-sm text-gray-600 hover:text-orange-600">Privacy</Link></li>
-          <li><Link href="/terms" className="text-xs sm:text-sm text-gray-600 hover:text-orange-600">Terms</Link></li>
-          <li><Link href="/contact" className="text-xs sm:text-sm text-gray-600 hover:text-orange-600">Contact</Link></li>
-          <li><Link href="/faq" className="text-xs sm:text-sm text-gray-600 hover:text-orange-600">FAQ</Link></li>
-        </ul>
-      </div>
-
-      {/* Support section removed as requested */}
+      </footer>
     </div>
-
-    <div className="border-t border-gray-300 pt-6 sm:pt-8 text-center">
-      <p className="text-gray-600 text-xs sm:text-sm">
-        &copy; {new Date().getFullYear()} Convertify. All rights reserved.
-      </p>
-      <p className="text-gray-500 text-xs mt-1">
-        All conversions are processed securely in your browser.
-      </p>
-    </div>
-  </div>
-</footer>
-  </div>
   );
 }
