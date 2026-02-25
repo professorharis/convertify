@@ -41,7 +41,7 @@ export default function ContactPage() {
   const contactInfo = [
     { icon: <Mail size={20} />, title: "Email", value: "hello@convertify.app", link: "mailto:hello@convertify.com" },
     { icon: <Phone size={20} />, title: "Phone", value: "+1 (555) 123-4567", link: "tel:+15551234567" },
-    { icon: <MapPin size={20} />, title: "Office", value: "Peshawar, Pakistan, CA", link: "#" },
+    { icon: <MapPin size={20} />, title: "Office", value: "Peshawar, Pakistan", link: "#" },
   ];
 
   return (

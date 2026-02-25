@@ -941,7 +941,7 @@ export default function FormatConverterLandingPage() {
             </Link>
 
             <Link
-              href="/support"
+              href="/contact"
               className="flex items-center gap-4 py-3 px-4 text-gray-700 hover:text-orange-600 hover:bg-gray-50 transition-colors no-underline border-b border-gray-50"
               onClick={() => setMobileMenuOpen(false)}
             >
@@ -1196,7 +1196,7 @@ export default function FormatConverterLandingPage() {
                     {processing || libraryLoading ? (
                       <>
                         <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin" aria-hidden="true"></div>
-                        {libraryLoading ? "Loading Libraries..." : "Converting..."}
+                        {libraryLoading ? "Loading" : "Converting..."}
                       </>
                     ) : (
                       <>
