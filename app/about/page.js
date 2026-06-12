@@ -34,7 +34,7 @@ export default function AboutPage() {
   // Yahan maine Sirf Aapka naam dala hai, kyunke client ko owner se matlab hota hai
   const team = [
     { 
-      name: "Haris Khan", 
+      name: "Amir Khan", 
       role: "Founder & Lead Developer", 
       bio: "Full-stack developer passionate about building secure, AI-powered tools that solve real-world problems.", 
       avatar: "/team/haris.jpg", // Apni pic ka naam yahan likh dena
@@ -220,7 +220,7 @@ export default function AboutPage() {
                 <div className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 sm:mb-4">Fast.</div>
                 <h3 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">Secure. Reliable.</h3>
                 <p className="text-orange-100 text-sm sm:text-base">
-                  Built by <strong>Creative Haris</strong>, engineered for performance.
+                  Built by <strong>CodexbyAmir</strong>, engineered for performance.
                 </p>
               </div>
               <div className="absolute -bottom-4 sm:-bottom-6 -right-4 sm:-right-6 bg-white rounded-2xl p-4 sm:p-6 shadow-xl border border-gray-200 w-2/3">
@@ -396,7 +396,7 @@ export default function AboutPage() {
                 className="inline-flex items-center justify-center gap-2 sm:gap-3 bg-white text-orange-600 px-4 sm:px-6 md:px-8 py-2 sm:py-3 md:py-4 rounded-lg sm:rounded-xl font-bold border-2 border-orange-500 hover:bg-orange-50 transition-colors text-sm sm:text-base md:text-lg"
               >
                 <UsersIcon size={16} />
-                Work with Haris
+                Work with Amir
               </Link>
             </div>
           </motion.div>
@@ -415,7 +415,7 @@ export default function AboutPage() {
             </div>
             <div className="text-center md:text-right">
               <p className="text-gray-600 text-xs sm:text-sm mb-1 sm:mb-2">
-                &copy; {new Date().getFullYear()} Convertify. Designed by Creative Haris.
+                &copy; {new Date().getFullYear()} Convertify. Designed by Creative Amir.
               </p>
               <div className="flex gap-4 sm:gap-6 justify-center md:justify-end">
                 <Link href="/privacy" className="text-gray-600 hover:text-orange-600 transition-colors text-xs sm:text-sm">
