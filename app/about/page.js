@@ -1,11 +1,12 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { 
-  Sparkles, Users, Target, Globe, Shield, Zap, 
+  Users, Target, Globe, Shield, Zap, 
   Heart, Award, Clock, Star, TrendingUp, Users as UsersIcon,
   CheckCircle2, ArrowRight, Menu, X, ChevronLeft, Home, FileText, HelpCircle, Mail, Code
 } from 'lucide-react';
 import Link from 'next/link';
+import NextImage from 'next/image';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 
@@ -23,38 +24,33 @@ export default function AboutPage() {
   const handleBackNavigation = (e) => {
     e.preventDefault();
     if (typeof window !== 'undefined') {
-      if (hasHistory) {
-        router.back();
-      } else {
-        router.push('/');
-      }
+      if (hasHistory) router.back();
+      else router.push('/');
     }
   };
 
-  // Yahan maine Sirf Aapka naam dala hai, kyunke client ko owner se matlab hota hai
+  // Team
   const team = [
     { 
-      name: "Amir Khan", 
+      name: "Muhammad Haris", 
       role: "Founder & Lead Developer", 
-      bio: "Full-stack developer passionate about building secure, AI-powered tools that solve real-world problems.", 
-      avatar: "/team/haris.jpg", // Apni pic ka naam yahan likh dena
+      bio: "Computer Science student from District Mohmand, Khyber Pakhtunkhwa. Passionate about building real-world tools using web development, AI, and cybersecurity.", 
       icon: <Code size={32} />
     },
     { 
       name: "Convertify AI", 
       role: "Core Engine", 
-      bio: "Our advanced AI algorithms working 24/7 to ensure your files are converted instantly and accurately.", 
-      avatar: "/team/ai.jpg", 
+      bio: "Our AI algorithms working behind the scenes to ensure your files are converted instantly and accurately.", 
       icon: <Zap size={32} />
     }
   ];
 
-  // Ye milestones aapki journey ke hisab se set kiye hain
+  // Milestones — file converter focused
   const milestones = [
-    { year: "2025", title: "Inception", description: "The idea of Convertify was born to solve file format issues simply." },
-    { year: "2026 Q1", title: "Development", description: "Built the core engine using Next.js and advanced AI integration." },
-    { year: "2026 Q2", title: "Global Launch", description: "Convertify goes live, empowering users worldwide." },
-    { year: "Future", title: "Mobile App", description: "Expanding our ecosystem to iOS and Android platforms." },
+    { year: "15 / 01 / 2026", title: "Project Started", description: "Began building the core idea — a simple, privacy-first file converter that runs in the browser." },
+    { year: "22 / 01 / 2026", title: "Core Converter Built", description: "Implemented image and document conversion between multiple formats using Next.js." },
+    { year: "28 / 01 / 2026", title: "Smart Format Engine", description: "Added automatic format detection and filtering — only relevant output formats are shown." },
+    { year: "02 / 02 / 2026", title: "Public Launch", description: "Released the full converter with a clean, mobile-friendly interface and no sign-up required." },
   ];
 
   return (
@@ -80,12 +76,17 @@ export default function AboutPage() {
         </button>
       </div>
 
-      {/* DESKTOP NAVBAR */}
+      {/* DESKTOP NAVBAR – logo.png */}
       <nav className="hidden md:flex h-20 bg-white border-b border-gray-200 px-4 sm:px-6 md:px-16 items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center text-white">
-            <Sparkles size={24} />
-          </div>
+          <NextImage
+            src="/logo.png"
+            alt="Convertify Logo"
+            width={40}
+            height={40}
+            className="rounded-xl object-contain"
+            priority
+          />
           <Link href="/" className="text-2xl font-bold tracking-tight">Convertify</Link>
         </div>
         <Link 
@@ -161,13 +162,13 @@ export default function AboutPage() {
               About <span className="text-orange-600">Convertify</span>
             </h1>
             <p className="text-sm sm:text-base md:text-xl text-gray-600 mb-6 sm:mb-8 leading-relaxed px-2">
-              A professional tool designed for speed, security, and simplicity. 
+              A simple tool designed for speed, security, and simplicity. 
               We make file conversion effortless so you can focus on your work.
             </p>
             <div className="flex flex-wrap justify-center gap-2 sm:gap-4">
               <div className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-white rounded-lg border border-gray-200 shadow-sm">
                 <Users className="text-orange-500" size={16} />
-                <span className="font-medium text-xs sm:text-sm">Trusted Globally</span>
+                <span className="font-medium text-xs sm:text-sm">Built by a Student</span>
               </div>
               <div className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-white rounded-lg border border-gray-200 shadow-sm">
                 <Zap className="text-orange-500" size={16} />
@@ -175,7 +176,7 @@ export default function AboutPage() {
               </div>
               <div className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-white rounded-lg border border-gray-200 shadow-sm">
                 <Shield className="text-orange-500" size={16} />
-                <span className="font-medium text-xs sm:text-sm">100% Secure</span>
+                <span className="font-medium text-xs sm:text-sm">Runs Locally</span>
               </div>
             </div>
           </motion.div>
@@ -195,18 +196,18 @@ export default function AboutPage() {
               <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">Our Story</h2>
               <div className="space-y-3 sm:space-y-4 text-gray-600 text-sm sm:text-base">
                 <p>
-                  Convertify started with a single goal: to remove the friction from file management. 
-                  As a developer, I realized that most online converters were either full of ads, 
-                  slow, or unsafe for sensitive documents.
+                  My name is <strong className="text-gray-900">Muhammad Haris</strong>, a Computer Science 
+                  student from District Mohmand, Khyber Pakhtunkhwa, Pakistan. I completed my F.Sc. 
+                  in Computer Science and a one-year Diploma in Information Technology (DIT).
                 </p>
                 <p>
-                  I wanted to build something better. A platform that respects user privacy by processing 
-                  files locally or securely in the cloud, without storing them permanently.
+                  I learn best by building. Alongside my studies, I have worked on several web and 
+                  AI-based projects — including Custos AI, an AI-powered cybersecurity platform. 
+                  Convertify is one of those projects.
                 </p>
                 <p>
-                  Today, Convertify stands as a testament to modern web technology — combining 
-                  the power of AI with a clean, user-centric design. It is built for students, 
-                  professionals, and creators who value their time.
+                  The idea was simple: file conversion should be fast, private, and free from 
+                  ads and sign-up walls. So I built it to run entirely in the browser.
                 </p>
               </div>
             </motion.div>
@@ -217,16 +218,16 @@ export default function AboutPage() {
               className="relative"
             >
               <div className="bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl p-6 sm:p-8 text-white shadow-xl">
-                <div className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 sm:mb-4">Fast.</div>
-                <h3 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">Secure. Reliable.</h3>
+                <div className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 sm:mb-4">Learn. Build.</div>
+                <h3 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">Improve. Repeat.</h3>
                 <p className="text-orange-100 text-sm sm:text-base">
-                  Built by <strong>CodexbyAmir</strong>, engineered for performance.
+                  Progress does not require having everything from the beginning.
                 </p>
               </div>
               <div className="absolute -bottom-4 sm:-bottom-6 -right-4 sm:-right-6 bg-white rounded-2xl p-4 sm:p-6 shadow-xl border border-gray-200 w-2/3">
                 <Code className="text-orange-500 mb-2 sm:mb-3" size={24} />
-                <h4 className="font-bold text-base sm:text-lg mb-1 sm:mb-2">Clean Code</h4>
-                <p className="text-gray-600 text-xs sm:text-sm">Optimized for all devices.</p>
+                <h4 className="font-bold text-base sm:text-lg mb-1 sm:mb-2">Real Projects</h4>
+                <p className="text-gray-600 text-xs sm:text-sm">Learning by building, not just reading.</p>
               </div>
             </motion.div>
           </div>
@@ -288,7 +289,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Team Section (Updated to Focus on Haris) */}
+      {/* Team Section */}
       <section className="py-8 sm:py-12 md:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-16">
           <motion.div
@@ -314,7 +315,6 @@ export default function AboutPage() {
                 className="bg-white rounded-xl sm:rounded-2xl p-6 sm:p-8 border border-gray-200 text-center w-full max-w-sm shadow-md"
               >
                 <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-orange-500 to-red-600 rounded-full mx-auto mb-4 sm:mb-6 flex items-center justify-center text-white shadow-inner">
-                  {/* Agar image nahi hai to Icon dikhayega */}
                   {member.icon}
                 </div>
                 <h3 className="font-bold text-xl sm:text-2xl mb-1">{member.name}</h3>
@@ -336,7 +336,7 @@ export default function AboutPage() {
             className="text-center mb-8 sm:mb-12"
           >
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-3 sm:mb-4">Our Journey</h2>
-            <p className="text-gray-600 text-sm sm:text-base">From concept to reality</p>
+            <p className="text-gray-600 text-sm sm:text-base">From concept to reality — 15 Jan 2026 to 02 Feb 2026</p>
           </motion.div>
 
           <div className="relative">
@@ -396,26 +396,31 @@ export default function AboutPage() {
                 className="inline-flex items-center justify-center gap-2 sm:gap-3 bg-white text-orange-600 px-4 sm:px-6 md:px-8 py-2 sm:py-3 md:py-4 rounded-lg sm:rounded-xl font-bold border-2 border-orange-500 hover:bg-orange-50 transition-colors text-sm sm:text-base md:text-lg"
               >
                 <UsersIcon size={16} />
-                Work with Amir
+                Work with Haris
               </Link>
             </div>
           </motion.div>
         </div>
       </section>
 
-      {/* Footer */}
+      {/* FOOTER – logo.png */}
       <footer className="bg-gray-100 text-gray-800 py-8 sm:py-12 border-t border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-16">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6 md:mb-0">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center text-white">
-                <Sparkles size={18} className="sm:size-6" />
-              </div>
+              <NextImage
+                src="/logo.png"
+                alt="Convertify Logo"
+                width={40}
+                height={40}
+                className="rounded-xl object-contain"
+                loading="lazy"
+              />
               <span className="text-lg sm:text-xl md:text-2xl font-bold">Convertify</span>
             </div>
             <div className="text-center md:text-right">
               <p className="text-gray-600 text-xs sm:text-sm mb-1 sm:mb-2">
-                &copy; {new Date().getFullYear()} Convertify. Designed by Creative Amir.
+                &copy; {new Date().getFullYear()} Convertify. Built by Muhammad Haris.
               </p>
               <div className="flex gap-4 sm:gap-6 justify-center md:justify-end">
                 <Link href="/privacy" className="text-gray-600 hover:text-orange-600 transition-colors text-xs sm:text-sm">
